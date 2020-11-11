@@ -1,0 +1,58 @@
+from enum import Enum
+
+WIDTH = 4480
+HEIGHT = 2800
+INTERVAL = 80
+GRADIENT_OFFSET = 320
+LAYER_OFFSET = 280
+LAYER_WIDTH = WIDTH - LAYER_OFFSET * 2
+LAYER_HEIGHT = HEIGHT - LAYER_OFFSET * 2
+GRADIENT_WIDTH = WIDTH - GRADIENT_OFFSET * 2
+GRADIENT_HEIGHT = HEIGHT - GRADIENT_OFFSET * 2
+
+INTERIOR_ORIGIN = (360, 360)
+
+X_GRADIENT_COORDS = [
+    (x, GRADIENT_WIDTH - x) for x in range(0, GRADIENT_WIDTH + 1, INTERVAL)
+]
+Y_GRADIENT_COORDS = [
+    (y, GRADIENT_HEIGHT - y) for y in range(0, GRADIENT_HEIGHT + 1, INTERVAL)
+]
+
+ORIGIN = (0, 0)
+
+
+class QuadrantEnum(Enum):
+    FIRST = 1
+    SECOND = 2
+    THIRD = 3
+    FOURTH = 4
+
+
+class Slope(Enum):
+    DEFAULT = 1
+    HORIZONTAL = 2
+    VERTICAL = 3
+
+
+class Interval(Enum):
+    HORIZONTAL = 1
+    VERTICAL = 2
+
+
+class Corner:
+    TOP_LEFT = (0, 0)
+    TOP_RIGHT = (WIDTH, 0)
+    BOTTOM_RIGHT = (WIDTH, HEIGHT)
+    BOTTOM_LEFT = (0, HEIGHT)
+
+
+class Color:
+    WHITE = (255, 255, 255)
+    BLACK = (0, 0, 0)
+    CYAN = (0, 255, 255)
+    MAGENTA = (255, 0, 255)
+    YELLOW = (255, 255, 0)
+    RED = (255, 0, 0)
+    GREEN = (0, 255, 0)
+    BLUE = (0, 0, 255)
