@@ -133,3 +133,7 @@ dmypy.json
 
 # ignore gitignore
 .gitignore
+
+# resulting images
+*.png
+*.jpg
