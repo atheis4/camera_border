@@ -29,25 +29,25 @@ class QuadrantEnum(Enum):
     FOURTH = 4
 
 
-class Slope(Enum):
+class SlopeEnum(Enum):
     DEFAULT = 1
     HORIZONTAL = 2
     VERTICAL = 3
 
 
-class Interval(Enum):
+class IntervalEnum(Enum):
     HORIZONTAL = 1
     VERTICAL = 2
 
 
-class Corner:
+class Corners:
     TOP_LEFT = (0, 0)
     TOP_RIGHT = (WIDTH, 0)
     BOTTOM_RIGHT = (WIDTH, HEIGHT)
     BOTTOM_LEFT = (0, HEIGHT)
 
 
-class Color:
+class Colors:
     WHITE = (255, 255, 255)
     BLACK = (0, 0, 0)
     CYAN = (0, 255, 255)

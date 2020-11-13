@@ -27,7 +27,7 @@ def display_gradient_guidelines(drawing):
                     constants.GRADIENT_HEIGHT + constants.GRADIENT_OFFSET,
                 ),
             ],
-            fill=constants.Color.WHITE,
+            fill=constants.Colors.WHITE,
             width=1,
         )
     for y1, y2 in constants.Y_GRADIENT_COORDS:
@@ -39,7 +39,7 @@ def display_gradient_guidelines(drawing):
                     y2 + constants.GRADIENT_OFFSET,
                 ),
             ],
-            fill=constants.Color.WHITE,
+            fill=constants.Colors.WHITE,
             width=1,
         )
 
@@ -50,12 +50,12 @@ def display_layer_boundary(drawing):
             add_layer_offset(constants.ORIGIN),
             add_layer_offset((constants.LAYER_WIDTH, 0)),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
     drawing.line(
         [add_layer_offset((0, 0)), add_layer_offset((0, constants.LAYER_HEIGHT))],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
     drawing.line(
@@ -63,7 +63,7 @@ def display_layer_boundary(drawing):
             add_layer_offset((constants.LAYER_WIDTH, 0)),
             add_layer_offset((constants.LAYER_WIDTH, constants.LAYER_HEIGHT)),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
     drawing.line(
@@ -71,7 +71,7 @@ def display_layer_boundary(drawing):
             add_layer_offset((0, constants.LAYER_HEIGHT)),
             add_layer_offset((constants.LAYER_WIDTH, constants.LAYER_HEIGHT)),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
 
@@ -82,7 +82,7 @@ def display_gradient_boundary(drawing):
             add_gradient_offset(constants.ORIGIN),
             add_gradient_offset((constants.GRADIENT_WIDTH, 0)),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
     drawing.line(
@@ -90,7 +90,7 @@ def display_gradient_boundary(drawing):
             add_gradient_offset(constants.ORIGIN),
             add_gradient_offset((0, constants.GRADIENT_HEIGHT)),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
     drawing.line(
@@ -98,7 +98,7 @@ def display_gradient_boundary(drawing):
             add_gradient_offset((constants.GRADIENT_WIDTH, 0)),
             add_gradient_offset((constants.GRADIENT_WIDTH, constants.GRADIENT_HEIGHT)),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
     drawing.line(
@@ -106,7 +106,7 @@ def display_gradient_boundary(drawing):
             add_gradient_offset((0, constants.GRADIENT_HEIGHT)),
             add_gradient_offset((constants.GRADIENT_WIDTH, constants.GRADIENT_HEIGHT)),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
 
@@ -119,7 +119,7 @@ def display_inner_boundary(drawing):
                 (constants.GRADIENT_WIDTH - constants.GRADIENT_LAYER_OFFSET * 2, 0)
             ),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
     drawing.line(
@@ -129,7 +129,7 @@ def display_inner_boundary(drawing):
                 (0, constants.GRADIENT_HEIGHT - constants.GRADIENT_LAYER_OFFSET * 2)
             ),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
     drawing.line(
@@ -144,7 +144,7 @@ def display_inner_boundary(drawing):
                 )
             ),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )
     drawing.line(
@@ -159,6 +159,6 @@ def display_inner_boundary(drawing):
                 )
             ),
         ],
-        fill=constants.Color.WHITE,
+        fill=constants.Colors.WHITE,
         width=1,
     )

@@ -7,9 +7,19 @@ import constants
 
 
 class CircularCoordinates:
-    def __init__(self):
-        pass
+    def __init__(self, width, height, degrees=6):
+        self.width = width
+        self.height = height
+        self.degrees = degrees
 
+    @classmethod
+    def create_new(cls, width, height, degrees):
+        coords = CircularCoordinates(width, height, degrees)
+        coords.gen_coordinates()
+        return coords
+
+    def gen_coordinates():
+        return 
 
 class Gradient:
     def __init__(self, start, end, primary_color, secondary_color):
@@ -19,7 +29,7 @@ class Gradient:
         self.secondary_color = secondary_color
 
         self.slope = None
-        self.slope_type = constants.Slope.DEFAULT
+        self.slope_type = constants.SlopeEnum.DEFAULT
         self.perpendicular_slope = None
         self.interval = None
         self.interval_dim = None
@@ -39,23 +49,23 @@ class Gradient:
         try:
             m = (y2 - y1) / (x2 - x1)
         except ZeroDivisionError:
-            self.slope_type = constants.Slope.VERTICAL
+            self.slope_type = constants.SlopeEnum.VERTICAL
             return
         try:
             m1 = -1 / m
         except ZeroDivisionError:
-            self.slope_type = constants.Slope.HORIZONTAL
+            self.slope_type = constants.SlopeEnum.HORIZONTAL
             return
         self.slope = m
         self.perpendicular_slope = m1
-        self.slope_type = constants.Slope.DEFAULT
+        self.slope_type = constants.SlopeEnum.DEFAULT
 
     def gen_interval(self):
         dx = abs(self.end[0] - self.start[0])
         dy = abs(self.end[1] - self.start[1])
         self.interval = max(dx, dy)
         self.interval_dim = (
-            constants.Interval.HORIZONTAL if dx > dy else constants.Interval.VERTICAL
+            constants.IntervalEnum.HORIZONTAL if dx > dy else constants.IntervalEnum.VERTICAL
         )
 
     def gen_color_map(self):
@@ -106,43 +116,43 @@ class Layer:
 
     def fill_gradient(self, gradient):
         # vertical/horizontal
-        if gradient.slope_type != constants.Slope.DEFAULT:
+        if gradient.slope_type != constants.SlopeEnum.DEFAULT:
             self.fill_linear_gradient(gradient)
         else:
             self.fill_gradient_impl(gradient)
 
     def fill_edges(self, gradient):
-        if gradient.slope_type != constants.Slope.DEFAULT:
+        if gradient.slope_type != constants.SlopeEnum.DEFAULT:
             self.fill_linear_edges(gradient)
         else:
             self.fill_polygon_edges(gradient)
 
     def fill_linear_edges(self, gradient):
         rectangle_map = {
-            constants.Slope.HORIZONTAL: self.fill_horizontal_rectangles,
-            constants.Slope.VERTICAL: self.fill_vertical_rectangles,
+            constants.SlopeEnum.HORIZONTAL: self.fill_horizontal_rectangles,
+            constants.SlopeEnum.VERTICAL: self.fill_vertical_rectangles,
         }
         rectangle_map[gradient.slope_type](gradient)
 
     def fill_vertical_rectangles(self, gradient):
         self.drawing.polygon(
             [
-                constants.Corner.TOP_LEFT,
+                constants.Corners.TOP_LEFT,
                 (constants.GRADIENT_OFFSET, 0),
                 (constants.GRADIENT_OFFSET, constants.HEIGHT),
-                constants.Corner.BOTTOM_LEFT,
+                constants.Corners.BOTTOM_LEFT,
             ],
             fill=gradient.primary_color,
         )
         self.drawing.polygon(
             [
-                constants.Corner.TOP_RIGHT,
+                constants.Corners.TOP_RIGHT,
                 (constants.GRADIENT_WIDTH + constants.GRADIENT_OFFSET, 0),
                 (
                     constants.GRADIENT_WIDTH + constants.GRADIENT_OFFSET,
                     constants.HEIGHT,
                 ),
-                constants.Corner.BOTTOM_RIGHT,
+                constants.Corners.BOTTOM_RIGHT,
             ],
             fill=gradient.secondary_color,
         )
@@ -150,8 +160,8 @@ class Layer:
     def fill_horizontal_rectangles(self, gradient):
         self.drawing.polygon(
             [
-                constants.Corner.TOP_RIGHT,
-                constants.Corner.TOP_LEFT,
+                constants.Corners.TOP_RIGHT,
+                constants.Corners.TOP_LEFT,
                 (0, constants.GRADIENT_OFFSET),
                 (constants.WIDTH, constants.GRADIENT_OFFSET),
             ],
@@ -159,8 +169,8 @@ class Layer:
         )
         self.drawing.polygon(
             [
-                constants.Corner.BOTTOM_RIGHT,
-                constants.Corner.BOTTOM_LEFT,
+                constants.Corners.BOTTOM_RIGHT,
+                constants.Corners.BOTTOM_LEFT,
                 (
                     0,
                     constants.GRADIENT_HEIGHT + constants.GRADIENT_OFFSET,
@@ -175,7 +185,7 @@ class Layer:
 
     def fill_linear_gradient(self, gradient):
         for i, color in enumerate(gradient.color_map):
-            if gradient.interval_dim == constants.Interval.HORIZONTAL:
+            if gradient.interval_dim == constants.IntervalEnum.HORIZONTAL:
                 coordinates = [
                     (i + constants.GRADIENT_OFFSET, 0),
                     (i + constants.GRADIENT_OFFSET, constants.HEIGHT),
@@ -271,7 +281,7 @@ class Layer:
     @staticmethod
     def get_next_gradient_coords(m, start, interval, interval_dim):
         x1, y1 = start
-        if interval_dim == constants.Interval.HORIZONTAL:
+        if interval_dim == constants.IntervalEnum.HORIZONTAL:
             x2 = x1 + interval
             return x2, abs(m * (x2 - x1) + y1)
         else:
@@ -307,10 +317,10 @@ class Layer:
     @staticmethod
     def get_corner_from_quadrant(quadrant):
         return {
-            constants.QuadrantEnum.FIRST: constants.Corner.TOP_LEFT,
-            constants.QuadrantEnum.SECOND: constants.Corner.TOP_RIGHT,
-            constants.QuadrantEnum.THIRD: constants.Corner.BOTTOM_LEFT,
-            constants.QuadrantEnum.FOURTH: constants.Corner.BOTTOM_RIGHT,
+            constants.QuadrantEnum.FIRST: constants.Corners.TOP_LEFT,
+            constants.QuadrantEnum.SECOND: constants.Corners.TOP_RIGHT,
+            constants.QuadrantEnum.THIRD: constants.Corners.BOTTOM_LEFT,
+            constants.QuadrantEnum.FOURTH: constants.Corners.BOTTOM_RIGHT,
         }[quadrant]
 
     @staticmethod
@@ -335,7 +345,7 @@ if __name__ == "__main__":
 
     # Create a gradient
     gradient = Gradient.create_new(
-        start, end, constants.Color.CYAN, constants.Color.MAGENTA
+        start, end, constants.Colors.CYAN, constants.Colors.MAGENTA
     )
     # Create a layer
     image = Layer.create_new(constants.WIDTH, constants.HEIGHT)
