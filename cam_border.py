@@ -28,7 +28,7 @@ class Coordinates:
         radius = self.pythagorean(self.CENTER[0], self.CENTER[1])
         coords = []
         theta = self.degrees
-        while theta <= 360:
+        while theta <= 180:
             x, y = self.CENTER
             dx = self.get_change_in_x(x, radius, theta)
             dy = self.get_change_in_y(y, radius, theta)
