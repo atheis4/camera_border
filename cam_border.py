@@ -4,22 +4,71 @@ from PIL import Image, ImageDraw, ImageFilter
 import math
 
 import constants
+import guides
 
 
-class CircularCoordinates:
-    def __init__(self, width, height, degrees=6):
+class Coordinates:
+    CENTER = (constants.GRADIENT_WIDTH / 2, constants.GRADIENT_HEIGHT / 2)
+
+    def __init__(self, width, height, degrees):
         self.width = width
         self.height = height
         self.degrees = degrees
+        self.coords = None
 
     @classmethod
     def create_new(cls, width, height, degrees):
-        coords = CircularCoordinates(width, height, degrees)
+        coords = cls(width, height, degrees)
         coords.gen_coordinates()
         return coords
 
-    def gen_coordinates():
-        return 
+    def gen_coordinates(self):
+        start = (0, constants.GRADIENT_HEIGHT / 2)
+        end = self.invert_point(start)
+        radius = self.pythagorean(self.CENTER[0], self.CENTER[1])
+        coords = []
+        theta = self.degrees
+        while theta <= 180:
+            x, y = self.CENTER
+            dx = self.get_change_in_x(x, radius, theta)
+            dy = self.get_change_in_y(y, radius, theta)
+            # process start/end point to fix to gradient
+            # start = self.adjust_to_rectangle((dx, dy))
+            start = Layer.add_gradient_offset((dx, dy))
+            end = self.invert_point(start)
+
+            coords.append((start, end))
+            theta += self.degrees
+
+        self.coords = coords
+
+    # TODO: FIX!
+    def adjust_to_rectangle(point, theta):
+        x, y = point
+        if theta in (0, 180):
+            pass
+
+    @staticmethod
+    def get_change_in_x(x, radius, theta):
+        return x + radius * math.cos(math.radians(theta))
+
+    @staticmethod
+    def get_change_in_y(y, radius, theta):
+        return y + radius * math.sin(math.radians(theta))
+
+    @staticmethod
+    def get_slope_from_angle(theta):
+        return math.tan(math.radians(theta))
+
+    @staticmethod
+    def invert_point(point):
+        x, y = point
+        return constants.WIDTH - x, constants.HEIGHT - y
+
+    @staticmethod
+    def pythagorean(a, b):
+        return math.sqrt(pow(a, 2) + pow(b, 2))
+
 
 class Gradient:
     def __init__(self, start, end, primary_color, secondary_color):
@@ -65,7 +114,9 @@ class Gradient:
         dy = abs(self.end[1] - self.start[1])
         self.interval = max(dx, dy)
         self.interval_dim = (
-            constants.IntervalEnum.HORIZONTAL if dx > dy else constants.IntervalEnum.VERTICAL
+            constants.IntervalEnum.HORIZONTAL
+            if dx > dy
+            else constants.IntervalEnum.VERTICAL
         )
 
     def gen_color_map(self):
@@ -233,9 +284,9 @@ class Layer:
             fill=gradient.primary_color,
         )
         # invert the polygon for the ending point - secondary color
-        oppo_corner = self.invert_point(corner)
-        oppo_first_intercept = self.invert_point(first_intercept)
-        oppo_second_intercept = self.invert_point(second_intercept)
+        oppo_corner = Coordinates.invert_point(corner)
+        oppo_first_intercept = Coordinates.invert_point(first_intercept)
+        oppo_second_intercept = Coordinates.invert_point(second_intercept)
         self.drawing.polygon(
             [oppo_corner, oppo_first_intercept, oppo_second_intercept],
             fill=gradient.secondary_color,
@@ -294,11 +345,6 @@ class Layer:
         return (0, y + (m * -1 * x)), (x + (-1 * y / m), 0)
 
     @staticmethod
-    def invert_point(point):
-        x, y = point
-        return constants.WIDTH - x, constants.HEIGHT - y
-
-    @staticmethod
     def get_quadrant(point):
         x, y = point
         if x < constants.GRADIENT_WIDTH / 2:
@@ -354,6 +400,34 @@ if __name__ == "__main__":
     # trim the middle and edges
     image.trim()
     # add gaussian blur
-    image.blur(radius=10)
+    # image.blur(radius=10)
+
+    coords = Coordinates.create_new(
+        width=constants.GRADIENT_WIDTH,
+        height=constants.GRADIENT_HEIGHT,
+        degrees=3,
+    )
+
+    drawing = image.drawing
+    guides.display_gradient_boundary(drawing)
+    # guides.display_gradient_guidelines(drawing)
+
+    print(coords.coords)
+
+    for coord in coords.coords:
+        start, end = coord
+        drawing.line(
+            [start, end],
+            fill=constants.Colors.YELLOW,
+            width=5,
+        )
+
+    a, b = 1920, 1080
+    c = Coordinates.pythagorean(a, b)
+    x1, y1 = a - c + 320, b - c + 320
+    x2, y2 = x1 + c * 2, y1 + c * 2
+
+    drawing.ellipse([(x1, y1), (x2, y2)], outline=constants.Colors.WHITE, width=5)
+
     # save
     image.save("img_result2.png")
