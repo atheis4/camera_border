@@ -4,7 +4,6 @@ from PIL import Image, ImageDraw, ImageFilter
 import math
 
 import constants
-import guides
 
 
 class Coordinates:
@@ -27,14 +26,14 @@ class Coordinates:
         end = self.invert_point(start)
         radius = self.pythagorean(self.CENTER[0], self.CENTER[1])
         coords = []
-        theta = self.degrees
-        while theta <= 180:
+        theta = self.degrees + 180
+        while theta <= 360:
             x, y = self.CENTER
             dx = self.get_change_in_x(x, radius, theta)
             dy = self.get_change_in_y(y, radius, theta)
             # process start/end point to fix to gradient
-            # start = self.adjust_to_rectangle((dx, dy))
-            start = Layer.add_gradient_offset((dx, dy))
+            start = self.adjust_to_rectangle((dx, dy), theta)
+            start = Layer.add_gradient_offset(start)
             end = self.invert_point(start)
 
             coords.append((start, end))
@@ -42,11 +41,31 @@ class Coordinates:
 
         self.coords = coords
 
-    # TODO: FIX!
-    def adjust_to_rectangle(point, theta):
+    def adjust_to_rectangle(self, point, theta):
         x, y = point
-        if theta in (0, 180):
-            pass
+        if theta == 360:
+            # horizontal
+            x = 0 if x < 0 else constants.GRADIENT_WIDTH
+            return x, constants.GRADIENT_HEIGHT / 2
+        elif theta == 270:
+            # vertical
+            y = 0 if y < 0 else constants.GRADIENT_HEIGHT
+            return constants.GRADIENT_WIDTH / 2, y
+        else:
+            m = self.get_slope_from_angle(theta)
+            return self.trim_point(point, m)
+
+    @staticmethod
+    def trim_point(point, slope):
+        x1, y1 = point
+        if y1 < 0:
+            # y must be fixed to zero.
+            y2 = 0
+            return (y2 - y1) / slope + x1, y2
+        else:
+            # x must be fixed to 0 or constants.GRADIENT_WIDTH
+            x2 = 0 if x1 < constants.GRADIENT_WIDTH else constants.GRADIENT_WIDTH
+            return x2, slope * (x2 - x1) + y1
 
     @staticmethod
     def get_change_in_x(x, radius, theta):
@@ -112,7 +131,7 @@ class Gradient:
     def gen_interval(self):
         dx = abs(self.end[0] - self.start[0])
         dy = abs(self.end[1] - self.start[1])
-        self.interval = max(dx, dy)
+        self.interval = round(max(dx, dy))
         self.interval_dim = (
             constants.IntervalEnum.HORIZONTAL
             if dx > dy
@@ -180,12 +199,20 @@ class Layer:
 
     def fill_linear_edges(self, gradient):
         rectangle_map = {
-            constants.SlopeEnum.HORIZONTAL: self.fill_horizontal_rectangles,
-            constants.SlopeEnum.VERTICAL: self.fill_vertical_rectangles,
+            constants.SlopeEnum.HORIZONTAL: self.fill_vertical_rectangles,
+            constants.SlopeEnum.VERTICAL: self.fill_horizontal_rectangles,
         }
         rectangle_map[gradient.slope_type](gradient)
 
     def fill_vertical_rectangles(self, gradient):
+        x, _ = gradient.start
+        if x > constants.WIDTH / 2:
+            left_color = gradient.secondary_color
+            right_color = gradient.primary_color
+        else:
+            left_color = gradient.primary_color
+            right_color = gradient.secondary_color
+        # left
         self.drawing.polygon(
             [
                 constants.Corners.TOP_LEFT,
@@ -193,8 +220,9 @@ class Layer:
                 (constants.GRADIENT_OFFSET, constants.HEIGHT),
                 constants.Corners.BOTTOM_LEFT,
             ],
-            fill=gradient.primary_color,
+            fill=left_color,
         )
+        # right
         self.drawing.polygon(
             [
                 constants.Corners.TOP_RIGHT,
@@ -205,10 +233,18 @@ class Layer:
                 ),
                 constants.Corners.BOTTOM_RIGHT,
             ],
-            fill=gradient.secondary_color,
+            fill=right_color,
         )
 
     def fill_horizontal_rectangles(self, gradient):
+        _, y = gradient.start
+        if y < constants.HEIGHT / 2:
+            top_color = gradient.primary_color
+            bottom_color = gradient.secondary_color
+        else:
+            top_color = gradient.secondary_color
+            bottom_color = gradient.primary_color
+        # top
         self.drawing.polygon(
             [
                 constants.Corners.TOP_RIGHT,
@@ -216,8 +252,9 @@ class Layer:
                 (0, constants.GRADIENT_OFFSET),
                 (constants.WIDTH, constants.GRADIENT_OFFSET),
             ],
-            fill=gradient.primary_color,
+            fill=top_color,
         )
+        # bottom
         self.drawing.polygon(
             [
                 constants.Corners.BOTTOM_RIGHT,
@@ -231,20 +268,31 @@ class Layer:
                     constants.GRADIENT_HEIGHT + constants.GRADIENT_OFFSET,
                 ),
             ],
-            fill=gradient.secondary_color,
+            fill=bottom_color,
         )
 
     def fill_linear_gradient(self, gradient):
+        x, y = gradient.start
         for i, color in enumerate(gradient.color_map):
             if gradient.interval_dim == constants.IntervalEnum.HORIZONTAL:
+                x_coord = (
+                    0 + i
+                    if x < constants.GRADIENT_WIDTH / 2
+                    else constants.GRADIENT_WIDTH - i
+                )
                 coordinates = [
-                    (i + constants.GRADIENT_OFFSET, 0),
-                    (i + constants.GRADIENT_OFFSET, constants.HEIGHT),
+                    (x_coord + constants.GRADIENT_OFFSET, 0),
+                    (x_coord + constants.GRADIENT_OFFSET, constants.HEIGHT),
                 ]
             else:
+                y_coord = (
+                    0 + i
+                    if y < constants.GRADIENT_HEIGHT / 2
+                    else constants.GRADIENT_HEIGHT - i
+                )
                 coordinates = [
-                    (0, i + constants.GRADIENT_OFFSET),
-                    (constants.WIDTH, i + constants.GRADIENT_OFFSET),
+                    (0, y_coord + constants.GRADIENT_OFFSET),
+                    (constants.WIDTH, y_coord + constants.GRADIENT_OFFSET),
                 ]
             self.drawing.line(
                 coordinates,
@@ -256,12 +304,15 @@ class Layer:
         start = gradient.start
         m = gradient.slope
         m1 = gradient.perpendicular_slope
+        original_quadrant = self.get_quadrant(start)
         for i, color in enumerate(gradient.color_map, 1):
             # maybe need to update point...
             current_point = self.get_next_gradient_coords(
                 m, start, i, gradient.interval_dim
             )
-            first_intercept, second_intercept = self.get_intercepts(m1, current_point)
+            first_intercept, second_intercept = self.get_intercepts(
+                m1, current_point, original_quadrant
+            )
             self.drawing.line(
                 [first_intercept, second_intercept],
                 fill=tuple(color),
@@ -273,11 +324,11 @@ class Layer:
         Identifies the three points that make up the corner polygons of solid
         color for the gradient.
         """
-        start, end = gradient.start, gradient.end
+        start, _ = gradient.start, gradient.end
         slope = gradient.perpendicular_slope
         quadrant = self.get_quadrant(start)
 
-        first_intercept, second_intercept = self.get_intercepts(slope, start)
+        first_intercept, second_intercept = self.get_intercepts(slope, start, quadrant)
         corner = self.get_corner_from_quadrant(quadrant)
         self.drawing.polygon(
             [corner, first_intercept, second_intercept],
@@ -339,24 +390,38 @@ class Layer:
             y2 = y1 + interval
             return abs((y2 - y1) / m + x1), y2
 
+    # @staticmethod
+    # def get_intercepts(m, point, quadrant):
+    #     pass
+
     @staticmethod
-    def get_intercepts(m, point):
+    def get_intercepts(m, point, quadrant):
         x, y = point
-        return (0, y + (m * -1 * x)), (x + (-1 * y / m), 0)
+        x2 = 0 if quadrant == constants.QuadrantEnum.FIRST else constants.WIDTH
+        first_intercept = x2, m * (x2 - x) + y
+        second_intercept = x + (-1 * y / m), 0
+        return first_intercept, second_intercept
+
+    @staticmethod
+    def get_intercepts_for_gradient(m, point):
+        x, y = point
+        first_intercept = 0, m * (0 - x) + y
+        second_intercept = x + (-1 * y / m), 0
+        return first_intercept, second_intercept
 
     @staticmethod
     def get_quadrant(point):
         x, y = point
-        if x < constants.GRADIENT_WIDTH / 2:
+        if x < constants.WIDTH / 2:
             return (
                 constants.QuadrantEnum.FIRST
-                if y < constants.GRADIENT_HEIGHT / 2
+                if y < constants.HEIGHT / 2
                 else constants.QuadrantEnum.THIRD
             )
         else:
             return (
                 constants.QuadrantEnum.SECOND
-                if y < constants.GRADIENT_HEIGHT / 2
+                if y < constants.HEIGHT / 2
                 else constants.QuadrantEnum.FOURTH
             )
 
@@ -381,53 +446,88 @@ class Layer:
 
 
 if __name__ == "__main__":
-    # TODO: replace with circular coords class to rotate around the edge of
-    # the gradient frame defining the coordinates to generate.
-    x1, y1 = Layer.add_gradient_offset((1200, 0))
-    start = (x1, y1)
-    x2 = constants.WIDTH - x1
-    y2 = constants.HEIGHT - y1
-    end = (x2, y2)
-
-    # Create a gradient
-    gradient = Gradient.create_new(
-        start, end, constants.Colors.CYAN, constants.Colors.MAGENTA
-    )
-    # Create a layer
-    image = Layer.create_new(constants.WIDTH, constants.HEIGHT)
-    # apply gradient
-    image.apply_gradient(gradient)
-    # trim the middle and edges
-    image.trim()
-    # add gaussian blur
-    # image.blur(radius=10)
-
     coords = Coordinates.create_new(
         width=constants.GRADIENT_WIDTH,
         height=constants.GRADIENT_HEIGHT,
-        degrees=3,
+        degrees=12,
     )
 
-    drawing = image.drawing
-    guides.display_gradient_boundary(drawing)
-    # guides.display_gradient_guidelines(drawing)
+    # x1 = 2240
+    # y1 = 2480
+    # x2 = 2240
+    # y2 = 0
 
-    print(coords.coords)
+    # start, end = (x1, y2), (x2, y1)
+    # start, end = (320, 991.8914015935571), (4160, 1808.108598406443)
+    start, end = (3726.4924741088666, 320), (753.5075258911334, 2480)
+    # start, end = (3212.436367841666, 320), (1267.5636321583338, 2480)
+
+    layer = Layer.create_new(constants.WIDTH, constants.HEIGHT)
+    gradient = Gradient.create_new(
+        start, end, constants.Colors.CYAN, constants.Colors.YELLOW
+    )
+    layer.apply_gradient(gradient)
+    layer.trim()
 
     for coord in coords.coords:
         start, end = coord
-        drawing.line(
+        layer.drawing.line(
             [start, end],
             fill=constants.Colors.YELLOW,
             width=5,
         )
 
-    a, b = 1920, 1080
-    c = Coordinates.pythagorean(a, b)
-    x1, y1 = a - c + 320, b - c + 320
-    x2, y2 = x1 + c * 2, y1 + c * 2
+    layer.image.show()
 
-    drawing.ellipse([(x1, y1), (x2, y2)], outline=constants.Colors.WHITE, width=5)
+    # primary_to_secondary = []
+    # secondary_to_primary = []
 
-    # save
-    image.save("img_result2.png")
+    # counter = 0
+    # for coord in coords.coords:
+    #     start, end = coord
+    #     # create layer
+    #     first_layer = Layer.create_new(constants.WIDTH, constants.HEIGHT)
+    #     first_gradient = Gradient.create_new(
+    #         start, end, constants.Colors.CYAN, constants.Colors.YELLOW
+    #     )
+    #     # apply, trim, append both sets of layers
+    #     first_layer.apply_gradient(first_gradient)
+    #     first_layer.trim()
+
+    #     for coord_guide in coords.coords:
+    #         start_guide, end_guide = coord_guide
+    #         first_layer.drawing.line(
+    #             [start_guide, end_guide],
+    #             fill=constants.Colors.YELLOW,
+    #             width=5,
+    #         )
+
+    #     primary_to_secondary.append(first_layer.image)
+    #     first_layer.image.save(f'1_cyan_to_yellow/{counter}_{start}_{end}.png')
+
+    #     second_layer = Layer.create_new(constants.WIDTH, constants.HEIGHT)
+    #     second_gradient = Gradient.create_new(
+    #         start, end, constants.Colors.YELLOW, constants.Colors.CYAN
+    #     )
+    #     second_layer.apply_gradient(second_gradient)
+    #     second_layer.trim()
+
+    #     for coord_guide in coords.coords:
+    #         start_guide, end_guide = coord_guide
+    #         second_layer.drawing.line(
+    #             [start_guide, end_guide],
+    #             fill=constants.Colors.YELLOW,
+    #             width=5,
+    #         )
+
+    #     secondary_to_primary.append(second_layer.image)
+    #     second_layer.image.save(f'2_yellow_to_cyan/{counter}_{start}_{end}.png')
+    #     counter += 1
+
+    # primary_to_secondary.extend(secondary_to_primary)
+    # # save as gif
+    # primary_to_secondary[0].save(
+    #     "camera_border_cyan_to_yellow.gif",
+    #     save_all=True,
+    #     append_images=primary_to_secondary[1:],
+    # )
