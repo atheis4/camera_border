@@ -308,7 +308,7 @@ class Layer:
         for i, color in enumerate(gradient.color_map, 1):
             # maybe need to update point...
             current_point = self.get_next_gradient_coords(
-                m, start, i, gradient.interval_dim
+                m, start, i, gradient.interval_dim, original_quadrant
             )
             first_intercept, second_intercept = self.get_intercepts(
                 m1, current_point, original_quadrant
@@ -350,7 +350,10 @@ class Layer:
     def trim_interior(self):
         interior = Image.new(
             "RGBA",
-            (constants.GRADIENT_WIDTH - 80, constants.GRADIENT_HEIGHT - 80),
+            (
+                constants.GRADIENT_WIDTH - constants.INTERVAL,
+                constants.GRADIENT_HEIGHT - constants.INTERVAL,
+            ),
             color=0,
         )
         self.image.paste(interior, box=constants.INTERIOR_ORIGIN)
@@ -381,10 +384,14 @@ class Layer:
         self.image = self.image.filter(ImageFilter.GaussianBlur(radius))
 
     @staticmethod
-    def get_next_gradient_coords(m, start, interval, interval_dim):
+    def get_next_gradient_coords(m, start, interval, interval_dim, original_quadrant):
         x1, y1 = start
         if interval_dim == constants.IntervalEnum.HORIZONTAL:
-            x2 = x1 + interval
+            x2 = (
+                x1 + interval
+                if original_quadrant == constants.QuadrantEnum.FIRST
+                else x1 - interval
+            )
             return x2, abs(m * (x2 - x1) + y1)
         else:
             y2 = y1 + interval
@@ -449,85 +456,48 @@ if __name__ == "__main__":
     coords = Coordinates.create_new(
         width=constants.GRADIENT_WIDTH,
         height=constants.GRADIENT_HEIGHT,
-        degrees=12,
+        degrees=6,
     )
 
-    # x1 = 2240
-    # y1 = 2480
-    # x2 = 2240
-    # y2 = 0
+    primary_color = constants.Colors.CYAN
+    secondary_color = constants.Colors.MAGENTA
 
-    # start, end = (x1, y2), (x2, y1)
-    # start, end = (320, 991.8914015935571), (4160, 1808.108598406443)
-    start, end = (3726.4924741088666, 320), (753.5075258911334, 2480)
-    # start, end = (3212.436367841666, 320), (1267.5636321583338, 2480)
+    radial_blur = 5
 
-    layer = Layer.create_new(constants.WIDTH, constants.HEIGHT)
-    gradient = Gradient.create_new(
-        start, end, constants.Colors.CYAN, constants.Colors.YELLOW
-    )
-    layer.apply_gradient(gradient)
-    layer.trim()
+    primary_to_secondary = []
+    secondary_to_primary = []
 
     for coord in coords.coords:
         start, end = coord
-        layer.drawing.line(
-            [start, end],
-            fill=constants.Colors.YELLOW,
-            width=5,
+        # create first layer
+        first_layer = Layer.create_new(constants.WIDTH, constants.HEIGHT)
+        first_gradient = Gradient.create_new(
+            start, end, primary_color, secondary_color
         )
+        # apply, trim, append first layer
+        first_layer.apply_gradient(first_gradient)
+        first_layer.trim()
+        first_layer.blur(radial_blur)
+        primary_to_secondary.append(first_layer.image)
+        #create second layer
+        second_layer = Layer.create_new(constants.WIDTH, constants.HEIGHT)
+        second_gradient = Gradient.create_new(
+            start, end, secondary_color, primary_color
+        )
+        # apply, trim, append second layer
+        second_layer.apply_gradient(second_gradient)
+        second_layer.trim()
+        second_layer.blur(radial_blur)
+        secondary_to_primary.append(second_layer.image)
 
-    layer.image.show()
-
-    # primary_to_secondary = []
-    # secondary_to_primary = []
-
-    # counter = 0
-    # for coord in coords.coords:
-    #     start, end = coord
-    #     # create layer
-    #     first_layer = Layer.create_new(constants.WIDTH, constants.HEIGHT)
-    #     first_gradient = Gradient.create_new(
-    #         start, end, constants.Colors.CYAN, constants.Colors.YELLOW
-    #     )
-    #     # apply, trim, append both sets of layers
-    #     first_layer.apply_gradient(first_gradient)
-    #     first_layer.trim()
-
-    #     for coord_guide in coords.coords:
-    #         start_guide, end_guide = coord_guide
-    #         first_layer.drawing.line(
-    #             [start_guide, end_guide],
-    #             fill=constants.Colors.YELLOW,
-    #             width=5,
-    #         )
-
-    #     primary_to_secondary.append(first_layer.image)
-    #     first_layer.image.save(f'1_cyan_to_yellow/{counter}_{start}_{end}.png')
-
-    #     second_layer = Layer.create_new(constants.WIDTH, constants.HEIGHT)
-    #     second_gradient = Gradient.create_new(
-    #         start, end, constants.Colors.YELLOW, constants.Colors.CYAN
-    #     )
-    #     second_layer.apply_gradient(second_gradient)
-    #     second_layer.trim()
-
-    #     for coord_guide in coords.coords:
-    #         start_guide, end_guide = coord_guide
-    #         second_layer.drawing.line(
-    #             [start_guide, end_guide],
-    #             fill=constants.Colors.YELLOW,
-    #             width=5,
-    #         )
-
-    #     secondary_to_primary.append(second_layer.image)
-    #     second_layer.image.save(f'2_yellow_to_cyan/{counter}_{start}_{end}.png')
-    #     counter += 1
-
-    # primary_to_secondary.extend(secondary_to_primary)
-    # # save as gif
-    # primary_to_secondary[0].save(
-    #     "camera_border_cyan_to_yellow.gif",
-    #     save_all=True,
-    #     append_images=primary_to_secondary[1:],
-    # )
+    primary_to_secondary.extend(secondary_to_primary)
+    # save as gif
+    primary_to_secondary[0].save(
+        "cam_border_test.gif",
+        save_all=True,
+        append_images=primary_to_secondary[1:],
+        optimize=False,
+        loop=0,
+        duration=180,
+        transparency=0,
+    )

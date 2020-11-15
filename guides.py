@@ -19,33 +19,6 @@ def add_layer_and_gradient_offset(point):
     )
 
 
-def display_gradient_guidelines(drawing):
-    for x1, x2 in constants.X_GRADIENT_COORDS:
-        drawing.line(
-            [
-                (x1 + constants.GRADIENT_OFFSET, constants.GRADIENT_OFFSET),
-                (
-                    x2 + constants.GRADIENT_OFFSET,
-                    constants.GRADIENT_HEIGHT + constants.GRADIENT_OFFSET,
-                ),
-            ],
-            fill=constants.Colors.WHITE,
-            width=5,
-        )
-    for y1, y2 in constants.Y_GRADIENT_COORDS:
-        drawing.line(
-            [
-                (constants.GRADIENT_OFFSET, y1 + constants.GRADIENT_OFFSET),
-                (
-                    constants.GRADIENT_WIDTH + constants.GRADIENT_OFFSET,
-                    y2 + constants.GRADIENT_OFFSET,
-                ),
-            ],
-            fill=constants.Colors.WHITE,
-            width=5,
-        )
-
-
 def display_layer_boundary(drawing):
     drawing.line(
         [
@@ -174,26 +147,13 @@ def display_circular_lines(drawing):
     coords = [start]
     curr_x, curr_y = x, y
     for d in range(0, 180, 3):
-        # calc
         rad = math.radians(d)
         r = math.sqrt(pow(1920, 2) + pow(1080, 2))
         dy = curr_y + r * math.sin(d)
         dx = curr_x + r * math.cos(d)
-        # w = (constants.GRADIENT_HEIGHT / 2) / 
-        # if h > 0:
         drawing.line(
             [(dx + 320, dy + 320), (constants.GRADIENT_WIDTH / 2 + 320, constants.GRADIENT_HEIGHT / 2 + 320)],
             fill=constants.Colors.WHITE,
             width=5
         )
         curr_x, curr_y = dx, dy
-        # else:
-        #     drawing.line(
-        #         [(), (constants.GRADIENT_WIDTH / 2 + 320, constants.GRADIENT_HEIGHT / 2 + 320)],
-        #         fill=constants.Colors.WHITE,
-        #         width=5,
-        #     )
-        # apply
-        # increment
-    
-    # drawing.line()
