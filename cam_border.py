@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from PIL import Image, ImageDraw, ImageFilter
 import math
+import os
+from PIL import Image, ImageDraw, ImageFilter
 
 import constants
 
@@ -79,10 +80,9 @@ class Coordinates:
     def get_slope_from_angle(theta):
         return math.tan(math.radians(theta))
 
-    @staticmethod
-    def invert_point(point):
+    def invert_point(self, point):
         x, y = point
-        return constants.WIDTH - x, constants.HEIGHT - y
+        return self.width - x, self.height - y
 
     @staticmethod
     def pythagorean(a, b):
@@ -164,14 +164,14 @@ class Layer:
         self.drawing = None
 
     @classmethod
-    def create_new(cls, width=constants.WIDTH, height=constants.HEIGHT):
+    def create_new(cls, width, height):
         image = cls(width, height)
         image.gen_pil_image()
         image.gen_drawing()
         return image
 
     def gen_pil_image(self):
-        self.image = Image.new("RGBA", (self.width, self.height), color=0)
+        self.image = Image.new("RGBA", (self.width, self.height), color=(0, 0, 0, 0))
 
     def save(self, filename):
         with open(filename, "wb") as f:
@@ -206,7 +206,7 @@ class Layer:
 
     def fill_vertical_rectangles(self, gradient):
         x, _ = gradient.start
-        if x > constants.WIDTH / 2:
+        if x > self.width / 2:
             left_color = gradient.secondary_color
             right_color = gradient.primary_color
         else:
@@ -217,7 +217,7 @@ class Layer:
             [
                 constants.Corners.TOP_LEFT,
                 (constants.GRADIENT_OFFSET, 0),
-                (constants.GRADIENT_OFFSET, constants.HEIGHT),
+                (constants.GRADIENT_OFFSET, self.height),
                 constants.Corners.BOTTOM_LEFT,
             ],
             fill=left_color,
@@ -229,7 +229,7 @@ class Layer:
                 (constants.GRADIENT_WIDTH + constants.GRADIENT_OFFSET, 0),
                 (
                     constants.GRADIENT_WIDTH + constants.GRADIENT_OFFSET,
-                    constants.HEIGHT,
+                    self.height,
                 ),
                 constants.Corners.BOTTOM_RIGHT,
             ],
@@ -238,7 +238,7 @@ class Layer:
 
     def fill_horizontal_rectangles(self, gradient):
         _, y = gradient.start
-        if y < constants.HEIGHT / 2:
+        if y < self.height / 2:
             top_color = gradient.primary_color
             bottom_color = gradient.secondary_color
         else:
@@ -250,7 +250,7 @@ class Layer:
                 constants.Corners.TOP_RIGHT,
                 constants.Corners.TOP_LEFT,
                 (0, constants.GRADIENT_OFFSET),
-                (constants.WIDTH, constants.GRADIENT_OFFSET),
+                (self.width, constants.GRADIENT_OFFSET),
             ],
             fill=top_color,
         )
@@ -264,7 +264,7 @@ class Layer:
                     constants.GRADIENT_HEIGHT + constants.GRADIENT_OFFSET,
                 ),
                 (
-                    constants.WIDTH,
+                    self.width,
                     constants.GRADIENT_HEIGHT + constants.GRADIENT_OFFSET,
                 ),
             ],
@@ -282,7 +282,7 @@ class Layer:
                 )
                 coordinates = [
                     (x_coord + constants.GRADIENT_OFFSET, 0),
-                    (x_coord + constants.GRADIENT_OFFSET, constants.HEIGHT),
+                    (x_coord + constants.GRADIENT_OFFSET, self.height),
                 ]
             else:
                 y_coord = (
@@ -292,7 +292,7 @@ class Layer:
                 )
                 coordinates = [
                     (0, y_coord + constants.GRADIENT_OFFSET),
-                    (constants.WIDTH, y_coord + constants.GRADIENT_OFFSET),
+                    (self.width, y_coord + constants.GRADIENT_OFFSET),
                 ]
             self.drawing.line(
                 coordinates,
@@ -335,9 +335,9 @@ class Layer:
             fill=gradient.primary_color,
         )
         # invert the polygon for the ending point - secondary color
-        oppo_corner = Coordinates.invert_point(corner)
-        oppo_first_intercept = Coordinates.invert_point(first_intercept)
-        oppo_second_intercept = Coordinates.invert_point(second_intercept)
+        oppo_corner = self.invert_point(corner)
+        oppo_first_intercept = self.invert_point(first_intercept)
+        oppo_second_intercept = self.invert_point(second_intercept)
         self.drawing.polygon(
             [oppo_corner, oppo_first_intercept, oppo_second_intercept],
             fill=gradient.secondary_color,
@@ -354,15 +354,15 @@ class Layer:
                 constants.GRADIENT_WIDTH - constants.INTERVAL,
                 constants.GRADIENT_HEIGHT - constants.INTERVAL,
             ),
-            color=0,
+            color=(0, 0, 0, 0),
         )
         self.image.paste(interior, box=constants.INTERIOR_ORIGIN)
 
     def trim_edges(self):
         horizontal_edges = Image.new(
             "RGBA",
-            (constants.WIDTH, constants.LAYER_OFFSET),
-            color=0,
+            (self.width, constants.LAYER_OFFSET),
+            color=(0, 0, 0, 0),
         )
         self.image.paste(horizontal_edges)
         self.image.paste(
@@ -371,8 +371,8 @@ class Layer:
         )
         vertical_edges = Image.new(
             "RGBA",
-            (constants.LAYER_OFFSET, constants.HEIGHT),
-            color=0,
+            (constants.LAYER_OFFSET, self.height),
+            color=(0, 0, 0, 0),
         )
         self.image.paste(vertical_edges)
         self.image.paste(
@@ -382,6 +382,40 @@ class Layer:
 
     def blur(self, radius):
         self.image = self.image.filter(ImageFilter.GaussianBlur(radius))
+
+    def get_intercepts(self, m, point, quadrant):
+        x, y = point
+        x2 = 0 if quadrant == constants.QuadrantEnum.FIRST else self.width
+        first_intercept = x2, m * (x2 - x) + y
+        second_intercept = x + (-1 * y / m), 0
+        return first_intercept, second_intercept
+
+    def get_quadrant(self, point):
+        x, y = point
+        if x < self.width / 2:
+            return (
+                constants.QuadrantEnum.FIRST
+                if y < self.height / 2
+                else constants.QuadrantEnum.THIRD
+            )
+        else:
+            return (
+                constants.QuadrantEnum.SECOND
+                if y < self.height / 2
+                else constants.QuadrantEnum.FOURTH
+            )
+
+    def get_corner_from_quadrant(self, quadrant):
+        return {
+            constants.QuadrantEnum.FIRST: constants.Corners.get_top_left(),
+            constants.QuadrantEnum.SECOND: constants.Corners.get_top_right(self.width),
+            constants.QuadrantEnum.THIRD: constants.Corners.get_bottom_left(self.height),
+            constants.QuadrantEnum.FOURTH: constants.Corners.get_bottom_right(self.width, self.height),
+        }[quadrant]
+
+    def invert_point(self, point):
+        x, y = point
+        return self.width - x, self.height - y
 
     @staticmethod
     def get_next_gradient_coords(m, start, interval, interval_dim, original_quadrant):
@@ -397,50 +431,6 @@ class Layer:
             y2 = y1 + interval
             return abs((y2 - y1) / m + x1), y2
 
-    # @staticmethod
-    # def get_intercepts(m, point, quadrant):
-    #     pass
-
-    @staticmethod
-    def get_intercepts(m, point, quadrant):
-        x, y = point
-        x2 = 0 if quadrant == constants.QuadrantEnum.FIRST else constants.WIDTH
-        first_intercept = x2, m * (x2 - x) + y
-        second_intercept = x + (-1 * y / m), 0
-        return first_intercept, second_intercept
-
-    @staticmethod
-    def get_intercepts_for_gradient(m, point):
-        x, y = point
-        first_intercept = 0, m * (0 - x) + y
-        second_intercept = x + (-1 * y / m), 0
-        return first_intercept, second_intercept
-
-    @staticmethod
-    def get_quadrant(point):
-        x, y = point
-        if x < constants.WIDTH / 2:
-            return (
-                constants.QuadrantEnum.FIRST
-                if y < constants.HEIGHT / 2
-                else constants.QuadrantEnum.THIRD
-            )
-        else:
-            return (
-                constants.QuadrantEnum.SECOND
-                if y < constants.HEIGHT / 2
-                else constants.QuadrantEnum.FOURTH
-            )
-
-    @staticmethod
-    def get_corner_from_quadrant(quadrant):
-        return {
-            constants.QuadrantEnum.FIRST: constants.Corners.TOP_LEFT,
-            constants.QuadrantEnum.SECOND: constants.Corners.TOP_RIGHT,
-            constants.QuadrantEnum.THIRD: constants.Corners.BOTTOM_LEFT,
-            constants.QuadrantEnum.FOURTH: constants.Corners.BOTTOM_RIGHT,
-        }[quadrant]
-
     @staticmethod
     def add_gradient_offset(point):
         x, y = point
@@ -452,52 +442,89 @@ class Layer:
         return x + constants.LAYER_OFFSET, y + constants.LAYER_OFFSET
 
 
+class CameraBorder:
+    DEGREES = 6
+
+    def __init__(self, width, height, primary_color, secondary_color):
+        self.width = width
+        self.height = height
+        self.primary_color = primary_color
+        self.secondary_color = secondary_color
+
+        self.coordinates = None
+        self.layers = None
+
+    @classmethod
+    def create_new(
+        cls,
+        aspect_ratio=None,
+        primary_color=None,
+        secondary_color=None,
+        output_dir=None,
+    ):
+        width, height = constants.ASPECT_RATIO_TO_DIMENSIONS[aspect_ratio]
+        primary_color = cls.enforce_rgb(primary_color)
+        secondary_color = cls.enforce_rgb(secondary_color)
+        camera_border = cls(width, height, primary_color, secondary_color)
+        camera_border.gen_coordinates()
+        camera_border.gen_layers()
+        camera_border.save(output_dir)
+
+    def gen_coordinates(self):
+        self.coordinates = Coordinates.create_new(
+            width=self.width,
+            height=self.height,
+            degrees=self.DEGREES,
+        )
+
+    def gen_layers(self):
+        primary_to_secondary = []
+        secondary_to_primary = []
+        for coord in self.coordinates.coords:
+            start, end = coord
+            # create first layer
+            first_layer = Layer.create_new(self.width, self.height)
+            first_gradient = Gradient.create_new(
+                start, end, self.primary_color, self.secondary_color
+            )
+            # apply, trim, append first layer
+            first_layer.apply_gradient(first_gradient)
+            first_layer.trim()
+            primary_to_secondary.append(first_layer.image)
+            # create second layer
+            second_layer = Layer.create_new(self.width, self.height)
+            second_gradient = Gradient.create_new(
+                start, end, self.secondary_color, self.primary_color
+            )
+            # apply, trim, append second layer
+            second_layer.apply_gradient(second_gradient)
+            second_layer.trim()
+            secondary_to_primary.append(second_layer.image)
+        self.layers = []
+        self.layers.extend(primary_to_secondary)
+        self.layers.extend(secondary_to_primary)
+
+    def save(self, output_dir):
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        for i, layer in enumerate(self.layers):
+            if i < 10:
+                i = f'0{i}'
+            layer.save(f'{output_dir}/{i}.png')
+
+    @staticmethod
+    def enforce_rgb(color):
+        if isinstance(color, str):
+            color = color[1:]
+            color = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+        return color
+
+
 if __name__ == "__main__":
-    coords = Coordinates.create_new(
-        width=constants.GRADIENT_WIDTH,
-        height=constants.GRADIENT_HEIGHT,
-        degrees=6,
-    )
 
-    primary_color = constants.Colors.CYAN
-    secondary_color = constants.Colors.MAGENTA
-
-    radial_blur = 5
-
-    primary_to_secondary = []
-    secondary_to_primary = []
-
-    for coord in coords.coords:
-        start, end = coord
-        # create first layer
-        first_layer = Layer.create_new(constants.WIDTH, constants.HEIGHT)
-        first_gradient = Gradient.create_new(
-            start, end, primary_color, secondary_color
-        )
-        # apply, trim, append first layer
-        first_layer.apply_gradient(first_gradient)
-        first_layer.trim()
-        first_layer.blur(radial_blur)
-        primary_to_secondary.append(first_layer.image)
-        #create second layer
-        second_layer = Layer.create_new(constants.WIDTH, constants.HEIGHT)
-        second_gradient = Gradient.create_new(
-            start, end, secondary_color, primary_color
-        )
-        # apply, trim, append second layer
-        second_layer.apply_gradient(second_gradient)
-        second_layer.trim()
-        second_layer.blur(radial_blur)
-        secondary_to_primary.append(second_layer.image)
-
-    primary_to_secondary.extend(secondary_to_primary)
-    # save as gif
-    primary_to_secondary[0].save(
-        "cam_border_test.gif",
-        save_all=True,
-        append_images=primary_to_secondary[1:],
-        optimize=False,
-        loop=0,
-        duration=180,
-        transparency=0,
+    camera_border = CameraBorder.create_new(
+        constants.AspectRatioEnum.SIXTEEN_BY_NINE,
+        constants.Colors.MAGENTA,
+        constants.Colors.YELLOW,
+        output_dir='magenta_to_yellow_api_test',
     )

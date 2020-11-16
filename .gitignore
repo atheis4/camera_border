@@ -137,6 +137,7 @@ dmypy.json
 # resulting images
 1_cyan_to_yellow/
 2_yellow_to_cyan/
+png_imgs/
 *.png
 *.jpg
 *.gif

@@ -1,18 +1,15 @@
 from enum import Enum
 
-WIDTH = 2240
-HEIGHT = 1400
-INTERVAL = 40
-LAYER_OFFSET = 140
-GRADIENT_OFFSET = 160
-INTERIOR_OFFSET = 180
-LAYER_WIDTH = WIDTH - LAYER_OFFSET * 2
-LAYER_HEIGHT = HEIGHT - LAYER_OFFSET * 2
-GRADIENT_WIDTH = WIDTH - GRADIENT_OFFSET * 2
-GRADIENT_HEIGHT = HEIGHT - GRADIENT_OFFSET * 2
 
-INTERIOR_ORIGIN = (INTERIOR_OFFSET, INTERIOR_OFFSET)
-ORIGIN = (0, 0)
+class AspectRatioEnum(Enum):
+    ONE_BY_ONE = 1
+    FOUR_BY_THREE = 2
+    SIXTEEN_BY_NINE = 3
+
+
+class IntervalEnum(Enum):
+    HORIZONTAL = 1
+    VERTICAL = 2
 
 
 class QuadrantEnum(Enum):
@@ -28,18 +25,6 @@ class SlopeEnum(Enum):
     VERTICAL = 3
 
 
-class IntervalEnum(Enum):
-    HORIZONTAL = 1
-    VERTICAL = 2
-
-
-class Corners:
-    TOP_LEFT = (0, 0)
-    TOP_RIGHT = (WIDTH, 0)
-    BOTTOM_RIGHT = (WIDTH, HEIGHT)
-    BOTTOM_LEFT = (0, HEIGHT)
-
-
 class Colors:
     WHITE = (255, 255, 255)
     BLACK = (0, 0, 0)
@@ -49,3 +34,47 @@ class Colors:
     RED = (255, 0, 0)
     GREEN = (0, 255, 0)
     BLUE = (0, 0, 255)
+
+
+ASPECT_RATIO_TO_DIMENSIONS = {
+    AspectRatioEnum.ONE_BY_ONE: (1120, 1120), 
+    AspectRatioEnum.FOUR_BY_THREE: (1120, 840), 
+    AspectRatioEnum.SIXTEEN_BY_NINE: (1120, 700),
+}
+
+WIDTH = 1120
+HEIGHT = 700
+INTERVAL = 20
+LAYER_OFFSET = 70
+GRADIENT_OFFSET = 80
+INTERIOR_OFFSET = 90
+LAYER_WIDTH = WIDTH - LAYER_OFFSET * 2
+LAYER_HEIGHT = HEIGHT - LAYER_OFFSET * 2
+GRADIENT_WIDTH = WIDTH - GRADIENT_OFFSET * 2
+GRADIENT_HEIGHT = HEIGHT - GRADIENT_OFFSET * 2
+
+INTERIOR_ORIGIN = (INTERIOR_OFFSET, INTERIOR_OFFSET)
+ORIGIN = (0, 0)
+
+
+class Corners:
+    TOP_LEFT = (0, 0)
+    TOP_RIGHT = (WIDTH, 0)
+    BOTTOM_RIGHT = (WIDTH, HEIGHT)
+    BOTTOM_LEFT = (0, HEIGHT)
+
+    @staticmethod
+    def get_top_right(width):
+        return (width, 0)
+
+    @staticmethod
+    def get_bottom_right(width, height):
+        return (width, height)
+
+    @staticmethod
+    def get_top_left():
+        return (0, 0)
+
+    @staticmethod
+    def get_bottom_left(height):
+        return (0, height)
