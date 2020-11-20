@@ -36,6 +36,30 @@ class Colors:
     BLUE = (0, 0, 255)
 
 
+PROFILE_TO_PALETTE = {
+    "cm": (Colors.CYAN, Colors.MAGENTA),
+    "cy": (Colors.CYAN, Colors.YELLOW),
+    "my": (Colors.MAGENTA, Colors.YELLOW),
+    "imposter": (Colors.BLACK, Colors.RED),
+}
+
+COLOR_STR_TO_COLOR = {
+    "black": Colors.BLACK,
+    "blue": Colors.BLUE,
+    "cyan": Colors.CYAN,
+    "green": Colors.GREEN,
+    "magenta": Colors.MAGENTA,
+    "white": Colors.WHITE,
+    "yellow": Colors.YELLOW,
+}
+
+
+def process_color_args(primary_color=None, secondary_color=None, profile=None):
+    if not primary_color or not secondary_color:
+        return PROFILE_TO_PALETTE[profile]
+    return COLOR_STR_TO_COLOR[primary_color], COLOR_STR_TO_COLOR[secondary_color]
+
+
 ASPECT_RATIO_TO_DIMENSIONS = {
     AspectRatioEnum.ONE_BY_ONE: (1120, 1120), 
     AspectRatioEnum.FOUR_BY_THREE: (1120, 840), 

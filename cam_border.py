@@ -518,13 +518,3 @@ class CameraBorder:
             color = color[1:]
             color = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
         return color
-
-
-if __name__ == "__main__":
-
-    camera_border = CameraBorder.create_new(
-        constants.AspectRatioEnum.SIXTEEN_BY_NINE,
-        constants.Colors.MAGENTA,
-        constants.Colors.YELLOW,
-        output_dir='magenta_to_yellow_api_test',
-    )
