@@ -6,6 +6,11 @@ import constants
 
 
 class Coordinates:
+    """
+    Responsible for generating the coordinate tuples along
+    the rectangle, as defined by the dimensions object.
+    """
+
     def __init__(self, dimensions, degrees):
         self.dimensions = dimensions
         self.degrees = degrees
@@ -18,8 +23,12 @@ class Coordinates:
         return coords
 
     def gen_coordinates(self):
+        """
+        Iterate around a circle and generate the points on a
+        rectangle for the gradient start and end points.
+        """
         start = (0, self.dimensions.gradient_height / 2)
-        end = self.invert_point(start)
+        end = self.dimensions.invert_point(start)
         radius = self.pythagorean(self.dimensions.gradient_center)
         coords = []
         theta = self.degrees + 180
@@ -30,7 +39,7 @@ class Coordinates:
             # process start/end point to fix to gradient
             start = self.adjust_to_rectangle((dx, dy), theta)
             start = Layer.add_gradient_offset(start)
-            end = self.invert_point(start)
+            end = self.dimensions.invert_point(start)
 
             coords.append((start, end))
             theta += self.degrees
@@ -78,11 +87,6 @@ class Coordinates:
     def get_slope_from_angle(theta):
         return math.tan(math.radians(theta))
 
-    # TODO: Do we need both invert points?
-    def invert_point(self, point):
-        x, y = point
-        return self.dimensions.width - x, self.dimensions.height - y
-
     @staticmethod
     def pythagorean(point):
         a, b = point
@@ -90,6 +94,12 @@ class Coordinates:
 
 
 class Dimensions:
+    """
+    Responsible for keeping track of the the various dimensions 
+    of the camera border--including overall width/height, layer
+    width/height, and gradient width/height.
+    """
+
     INTERVAL = 20
     LAYER_OFFSET = 70
     GRADIENT_OFFSET = 80
@@ -127,8 +137,17 @@ class Dimensions:
         self.layer_width = self.width - self.LAYER_OFFSET * 2
         self.layer_height = self.height - self.LAYER_OFFSET * 2
 
+    def invert_point(self, point):
+        x, y = point
+        return self.width - x, self.height - y
+
 
 class Gradient:
+    """
+    Constructs a single gradient from a start and end point using primary and 
+    secondary color.
+    """
+
     def __init__(self, start, end, primary_color, secondary_color):
         self.start = start
         self.end = end
@@ -196,6 +215,11 @@ class Gradient:
 
 
 class Layer:
+    """
+    Represents a single frame of the camera border. It applies the 
+    gradient object to a PIL image and trims it to our specified dimensions.
+    """
+
     def __init__(self, dimensions):
         self.dimensions = dimensions
         self.image = None
@@ -377,9 +401,9 @@ class Layer:
             fill=gradient.primary_color,
         )
         # invert the polygon for the ending point - secondary color
-        oppo_corner = self.invert_point(corner)
-        oppo_first_intercept = self.invert_point(first_intercept)
-        oppo_second_intercept = self.invert_point(second_intercept)
+        oppo_corner = self.dimensions.invert_point(corner)
+        oppo_first_intercept = self.dimensions.invert_point(first_intercept)
+        oppo_second_intercept = self.dimensions.invert_point(second_intercept)
         self.drawing.polygon(
             [oppo_corner, oppo_first_intercept, oppo_second_intercept],
             fill=gradient.secondary_color,
@@ -455,10 +479,6 @@ class Layer:
             constants.QuadrantEnum.FOURTH: self.dimensions.bottom_right,
         }[quadrant]
 
-    def invert_point(self, point):
-        x, y = point
-        return self.dimensions.width - x, self.dimensions.height - y
-
     @staticmethod
     def get_next_gradient_coords(m, start, interval, interval_dim, original_quadrant):
         x1, y1 = start
@@ -473,7 +493,6 @@ class Layer:
             y2 = y1 + interval
             return abs((y2 - y1) / m + x1), y2
 
-    # TODO: Double check
     @staticmethod
     def add_gradient_offset(point):
         x, y = point
@@ -486,6 +505,11 @@ class Layer:
 
 
 class CameraBorder:
+    """
+    Brings all the other classes together to construct a sequence of images that 
+    construct the gradient around all points on the rectangular coordinates.
+    """
+
     DEGREES = 6
 
     def __init__(self, dimensions, primary_color, secondary_color):
@@ -565,11 +589,16 @@ class CameraBorder:
     def process_color_args(primary_color=None, secondary_color=None, profile=None):
         if not primary_color or not secondary_color:
             return constants.PROFILE_TO_PALETTE[profile]
-        return (
-            constants.COLOR_STR_TO_COLOR[primary_color],
-            constants.COLOR_STR_TO_COLOR[secondary_color],
-        )
+        try:
+            first_color = constants.COLOR_STR_TO_COLOR[primary_color]
+        except KeyError:
+            first_color = primary_color
+        try:
+            second_color = constants.COLOR_STR_TO_COLOR[secondary_color]
+        except KeyError:
+            second_color = secondary_color
+        return first_color, second_color
 
     @staticmethod
     def process_aspect_ratio(aspect_ratio):
-        return constants.ASPECT_STR_TO_ENUM[aspect_ratio] 
+        return constants.ASPECT_STR_TO_ENUM[aspect_ratio]
