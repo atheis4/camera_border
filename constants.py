@@ -34,6 +34,7 @@ class Colors:
     RED = (255, 0, 0)
     GREEN = (0, 255, 0)
     BLUE = (0, 0, 255)
+    PURPLE = (113, 27, 248)  # #711BF8
 
 
 PROFILE_TO_PALETTE = {
@@ -49,6 +50,7 @@ COLOR_STR_TO_COLOR = {
     "cyan": Colors.CYAN,
     "green": Colors.GREEN,
     "magenta": Colors.MAGENTA,
+    "purple": Colors.PURPLE,
     "red": Colors.RED,
     "white": Colors.WHITE,
     "yellow": Colors.YELLOW,

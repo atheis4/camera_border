@@ -98,6 +98,18 @@ class Dimensions:
     Responsible for keeping track of the the various dimensions 
     of the camera border--including overall width/height, layer
     width/height, and gradient width/height.
+    
+    SQUARE VARIANT:
+    interval = 70
+    layer_offset = 70
+    gradient_offset = 105
+    interior_offset = 140
+
+    DEFAULT:
+    interval = 20
+    layer_offset = 70
+    gradient_offset = 80
+    interior_offset = 90
     """
 
     INTERVAL = 20
